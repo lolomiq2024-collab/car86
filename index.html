@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رفيق الطريق الإسلامي - معاينة</title>
+<style>
+  /* ===== مظهر مستوحى من واجهة Android TV: خلفية متدرجة بنفسجي/أزرق، شريط جانبي بأيقونات دائرية، بطاقات كبيرة ===== */
+  :root {
+    --g1: #4b1d5e;
+    --g2: #2a2352;
+    --g3: #17294a;
+    --accent: #ffffff;
+    --text: #f4f1f8;
+    --muted: #b9b0cc;
+    --card: rgba(255,255,255,.10);
+    --radius: .8em;
+    --fs: 1.65;          /* حجم الخط = نسبة من عرض الشاشة (cqw) فيتناسب مع أي مقاس */
+    --gap: .8em;
+    /* سلّم موحّد للنصوص */
+    --t-cap: .7em;  --t-sm: .85em;  --t-body: 1em;  --t-title: 1.3em;
+    --c-quran: #e8365d;
+    --c-lessons: #1a73e8;
+    --c-youtube: #e62117;
+    --c-map: #f4b400;
+    --c-songs: #00a896;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: #05060a; color: var(--text);
+    font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    gap: 16px; padding: 16px;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; }
+
+  .frame { width: min(100%, 1100px); container-type: inline-size; }
+  .screen {
+    width: 100%; aspect-ratio: 16/9; border-radius: 24px;
+    border: 6px solid #2b2f3a; overflow: hidden; position: relative;
+    background: linear-gradient(160deg, var(--g1) 0%, var(--g2) 48%, var(--g3) 100%);
+    display: grid; grid-template-columns: 4.7em 1fr; font-size: calc(var(--fs) * 1cqw);
+  }
+
+  /* الشريط الجانبي (يمين الشاشة) */
+  .rail { display: flex; flex-direction: column; align-items: center; gap: .7em; padding: .7em 0; }
+  .rail .ico {
+    width: 2.9em; height: 2.9em; border-radius: 50%; display: grid; place-items: center;
+    font-size: 1.35em; transition: transform .15s, box-shadow .15s;
+  }
+  .rail button { display: flex; flex-direction: column; align-items: center; gap: .2em; color: var(--muted); font-size: var(--t-cap); }
+  .rail button.on { color: #fff; }
+  .rail button.on .ico, .rail button:hover .ico, .rail button:focus-visible .ico {
+    transform: scale(1.12); box-shadow: 0 0 0 .12em #fff;
+  }
+
+  .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+  /* شريط البحث العلوي */
+  .top { display: flex; align-items: center; gap: .65em; padding: .8em .9em .3em 1.1em; }
+  .search {
+    flex: 1; display: flex; align-items: center; gap: .55em; background: rgba(255,255,255,.14);
+    border-radius: 999px; padding: 0 1em; height: 2.55em;
+  }
+  .search .dots { display: flex; gap: .17em; }
+  .search .dots i { width: .4em; height: .4em; border-radius: 50%; display: block; }
+  .search input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); }
+  .search input::placeholder { color: var(--muted); }
+  .clock { color: var(--muted); font-size: var(--t-sm); min-width: 3.4em; text-align: center; }
+  .pill { background: rgba(255,255,255,.16); border-radius: 999px; padding: 0 1em; height: 2.55em; font-size: var(--t-body); }
+  .pill:hover, .pill:focus-visible { background: #fff; color: #1b1030; }
+
+  /* الخانات */
+  .panels { flex: 1; display: flex; gap: var(--gap); padding: .3em .9em .55em 1.1em; min-height: 0; }
+  .panel {
+    flex: 1; min-width: 0; container-type: inline-size; overflow-y: auto; overflow-x: hidden; border-radius: var(--radius);
+    padding: .2em .3em; scrollbar-width: none; outline: 2px solid transparent; outline-offset: 2px;
+  }
+  .split .panel.active { outline-color: rgba(255,255,255,.45); }
+  .sec { color: var(--muted); font-size: var(--t-sm); margin: .5em .2em; }
+  .rowh { display: flex; gap: .65em; overflow-x: auto; padding: .45em .2em .8em; scrollbar-width: none; }
+
+  /* بطاقات صغيرة (القرّاء) */
+  .tile {
+    flex: 0 0 auto; width: clamp(3.7em, calc(100cqw / 6.3), 6em); height: clamp(1.8em, 6cqw, 2.35em); border-radius: .5em; padding: 0 .4em;
+    background: var(--card); display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: var(--t-sm); transition: transform .15s, box-shadow .15s;
+  }
+  .tile.on { background: #fff; color: #1b1030; font-weight: 700; }
+  /* بطاقات كبيرة (السور والدروس) */
+  .card {
+    flex: 0 0 auto; width: clamp(4.3em, calc(100cqw / 4.65), 10em); aspect-ratio: 16/10; border-radius: var(--radius); position: relative;
+    overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: .55em .65em;
+    text-align: center; transition: transform .15s, box-shadow .15s;
+  }
+  .card .no { position: absolute; top: .1em; left: .3em; font-size: 1.6em; font-weight: 800; opacity: .28; }
+  .card b { font-size: clamp(.6em, 2.4cqw, .85em); line-height: 1.35; overflow-wrap: anywhere; }
+  .card small { color: rgba(255,255,255,.78); font-size: var(--t-cap); }
+  .card.playing::after {
+    content: "🔊"; position: absolute; top: .45em; right: .55em; font-size: var(--t-body);
+  }
+  .card.wide { width: clamp(6em, calc(100cqw / 3.45), 13.3em); }
+  .card.wide .no { display: none; }
+  .tile:hover, .card:hover, .tile:focus-visible, .card:focus-visible {
+    transform: scale(1.06); box-shadow: 0 0 0 .12em #fff, 0 .6em 1.3em rgba(0,0,0,.45); z-index: 2;
+  }
+
+  /* يوتيوب (محاكاة) */
+  .yt { display: flex; flex-direction: column; gap: .55em; height: calc(100% - 8px); padding: 4px; }
+  .yt .in { display: flex; gap: 8px; }
+  .yt input { flex: 1; background: rgba(255,255,255,.14); border: 0; border-radius: 999px; padding: 0 1em; height: 2.45em; outline: 0; font-size: var(--t-body); }
+  .yt .video { flex: 1; min-height: 6.7em; background: #000; border-radius: var(--radius); display: grid; place-items: center; color: var(--muted); font-size: var(--t-sm); }
+
+  /* خريطة (محاكاة) */
+  .map {
+    height: calc(100% - 8px); min-height: 9em; border-radius: var(--radius); position: relative;
+    background:
+      linear-gradient(90deg, transparent 49%, rgba(255,255,255,.12) 49% 51%, transparent 51%) 0 0/110px 110px,
+      linear-gradient(0deg, transparent 49%, rgba(255,255,255,.12) 49% 51%, transparent 51%) 0 0/110px 110px,
+      linear-gradient(135deg, #1d3a37, #1b2d4a);
+  }
+  .pin { position: absolute; top: 45%; left: 48%; width: 1.2em; height: 1.2em; background: #ff5a4e; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+  .map small { position: absolute; bottom: .55em; right: .65em; color: var(--muted); font-size: var(--t-cap); }
+
+  /* شريط التشغيل */
+  .bar {
+    display: flex; align-items: center; gap: 10px; margin: 0 .9em .65em 1.1em; padding: .35em .9em;
+    background: rgba(10,8,25,.55); backdrop-filter: blur(6px); border-radius: 999px; position: relative; overflow: hidden;
+  }
+  .bar .title { flex: 1; font-size: var(--t-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ctl { width: 2.55em; height: 2.55em; border-radius: 50%; background: rgba(255,255,255,.14); font-size: var(--t-body); }
+  .ctl.big { background: #fff; color: #1b1030; width: 2.9em; height: 2.9em; }
+  .ctl:hover, .ctl:focus-visible { box-shadow: 0 0 0 .12em #fff; }
+  .progress { position: absolute; bottom: 0; right: 0; left: 0; height: 3px; background: rgba(255,255,255,.15); }
+  .progress i { display: block; height: 100%; width: 0; background: #fff; }
+
+  /* السور: شبكة، في كل سطر أربع سور */
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65em; padding: .45em .2em .8em; }
+  .grid4 .card { width: auto; }
+
+  /* خانة اسم القارئ */
+  .reciter {
+    display: flex; align-items: center; gap: .6em; width: 100%; height: 2.4em; padding: 0 1em;
+    margin: .2em 0 .4em; background: rgba(255,255,255,.14); border-radius: 999px; font-size: var(--t-sm);
+    transition: box-shadow .15s;
+  }
+  .reciter span:first-child { color: var(--muted); }
+  .reciter b { flex: 1; text-align: right; font-size: var(--t-body); }
+  .reciter:hover, .reciter:focus-visible { box-shadow: 0 0 0 .12em #fff; }
+  .reciter-menu {
+    display: flex; flex-direction: column; margin: 0 0 .5em; padding: .3em;
+    background: rgba(10,8,25,.85); border-radius: var(--radius);
+  }
+  .reciter-menu .opt { text-align: right; padding: .5em .8em; border-radius: .5em; font-size: var(--t-sm); }
+  .reciter-menu .opt:hover, .reciter-menu .opt.on { background: #fff; color: #1b1030; }
+
+  /* السحب والإفلات */
+  .rail button, .grip { touch-action: none; user-select: none; -webkit-user-select: none; }
+  .grip {
+    position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 8px;
+    height: 1.6em; margin: -.2em -.3em .35em; background: rgba(0,0,0,.28); color: var(--muted);
+    border-radius: var(--radius) var(--radius) 0 0; cursor: grab; font-size: var(--t-cap);
+  }
+  .grip:hover { background: rgba(0,0,0,.4); color: #fff; }
+  body.dragging, body.dragging * { cursor: grabbing !important; }
+  .panel.drop { outline: 3px dashed #fff !important; background: rgba(255,255,255,.10); }
+  .ghost {
+    position: fixed; z-index: 99; pointer-events: none; transform: translate(-50%, -50%) scale(1.1);
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px 8px 10px; border-radius: 999px;
+    background: #fff; color: #1b1030; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,.5); font-size: 16px;
+  }
+  .ghost .ico { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; }
+  .hint { width: min(100%, 1100px); color: var(--muted); font-size: 15px; text-align: center; }
+
+  /* لوحة التعديل */
+  .tweak {
+    width: min(100%, 1100px); background: #12121c; border-radius: 16px; padding: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; font-size: 15px;
+  }
+  .tweak h2 { grid-column: 1/-1; font-size: 16px; }
+  .tweak label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); }
+  .tweak input[type=color] { width: 100%; height: 36px; border: 0; background: none; padding: 0; }
+  .tweak button { background: #232336; padding: 10px; border-radius: 10px; }
+
+  /* ===== وضع التطبيق (APK): ملء الشاشة بدون إطار المعاينة ===== */
+  html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  body { padding: 0; gap: 0; min-height: 100%; display: block; }
+  .hint, .tweak { display: none !important; }
+  .frame { width: 100vw; height: 100vh; }
+  .screen { width: 100%; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; }
+</style>
+</head>
+<body>
+
+<div class="frame"><div class="screen" id="screen">
+  <nav class="rail" id="rail"></nav>
+  <div class="main">
+    <div class="top">
+      <div class="search">
+        <span class="dots"><i style="background:#4285f4"></i><i style="background:#ea4335"></i><i style="background:#fbbc04"></i><i style="background:#34a853"></i></span>
+        <input id="q" placeholder="ابحث عن سورة أو درس…">
+      </div>
+      <span class="clock" id="clock"></span>
+      <button class="pill" id="splitBtn">شاشة واحدة</button>
+    </div>
+    <div class="panels" id="panels"></div>
+    <div class="bar">
+      <span class="title" id="nowTitle">لا يوجد تشغيل</span>
+      <button class="ctl" id="prev" aria-label="السابق">⏮</button>
+      <button class="ctl big" id="play" aria-label="تشغيل">▶</button>
+      <button class="ctl" id="next" aria-label="التالي">⏭</button>
+      <div class="progress"><i id="prog"></i></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<p class="hint">💡 اسحب أيقونة من الشريط الجانبي وأفلتها فوق أي نصف لتشغيلها فيه، أو اسحب شريط الخانة (⠿) إلى النصف الآخر لتبديل مكانهما. والنقر على الأيقونة يغيّر الخانة النشطة.</p>
+
+<div class="tweak">
+  <h2>🎨 تعديل المظهر مباشرة</h2>
+  <label>بداية التدرج <input type="color" data-var="--g1" value="#4b1d5e"></label>
+  <label>وسط التدرج <input type="color" data-var="--g2" value="#2a2352"></label>
+  <label>نهاية التدرج <input type="color" data-var="--g3" value="#17294a"></label>
+  <label>لون القرآن <input type="color" data-var="--c-quran" value="#e8365d"></label>
+  <label>لون الدروس <input type="color" data-var="--c-lessons" value="#1a73e8"></label>
+  <label>لون يوتيوب <input type="color" data-var="--c-youtube" value="#e62117"></label>
+  <label>لون الخريطة <input type="color" data-var="--c-map" value="#f4b400"></label>
+  <label>لون الأغاني <input type="color" data-var="--c-songs" value="#00a896"></label>
+  <label>حجم الخط (نسبة من الشاشة) <input type="range" min="1.2" max="2.4" step="0.05" value="1.65" id="fs"></label>
+  <label>استدارة الزوايا <input type="range" min="0" max="1.8" step="0.1" value="0.8" id="rad"></label>
+  <button id="copy">نسخ القيم</button>
+  <button id="reset">إعادة الضبط</button>
+</div>
+
+<script>
+const reciters = ["مشاري العفاسي","عبد الباسط عبد الصمد","المنشاوي","عبد الرحمن السديس","ماهر المعيقلي"];
+const surahs = ["الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة","يونس","هود","يوسف","الرعد","إبراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه"];
+const ph = (w, n = 30) => Array.from({length: n}, (_, i) => `${w} ${i + 1}`);   // عناوين مؤقتة تُستبدل بالحقيقية
+const singers = {
+  "فيروز": ["زهرة المدائن","سكن الليل","أعطني الناي وغنِّ","كيفك إنت","نسّم علينا الهوا","حبيتك بالصيف","بكتب اسمك يا حبيبي","لما عالباب","شادي","يا دارة دوري فينا",
+    "سألوني الناس","الغضب الساطع آتٍ","شوارع القدس العتيقة","راجعون","لبيروت","بحبك يا لبنان","عالروزنا","نحن والقمر جيران","يا أنا يا أنا","وحدن",
+    "سلملي عليه","ورقو الأصفر","كان الزمان وكان","على جسر اللوزية","يا مرسال المراسيل","هالأسمر اللون","أمي يا ملاكي","حبيتك تنسيت النوم","طلعت يا محلا نورها","يا ريت","إيه في أمل"],
+  "أم كلثوم": ["إنت عمري","الأطلال","أنت الحب","ألف ليلة وليلة","أراك عصي الدمع","سلو قلبي","فكروني","للصبر حدود","هذه ليلتي","رباعيات الخيام",
+    "حيرت قلبي معاك","دليلي احتار","أنا في انتظارك","بعيد عنك","هجرتك","حب إيه","أمل حياتي","الحب كده","ليلة حب","أغدا ألقاك",
+    "ودارت الأيام","لسه فاكر","يا ظالمني","غلبت أصالح في روحي","يا اللي كان يشجيك أنيني","أقبل الليل","نهج البردة","وُلد الهدى","القلب يعشق كل جميل","رق الحبيب",
+    "الورد جميل","يا مسهرني","ذكريات","أنساك؟","فات الميعاد","افرح يا قلبي","حديث الروح"],
+  "عبد الحليم": ["صافيني مرة","قارئة الفنجان","عدّى النهار","زي الهوا","جانا الهوى","موعود","نبتدي منين الحكاية","رسالة من تحت الماء","أهواك","على حسب وداد قلبي",
+    "أنا لك على طول","بحلم بيك","ظلموه","سواح","الحلوة","توبة","حاول تفتكرني","فدائي","أحضان الحبايب","بالأحضان",
+    "نعم يا حبيبي","كامل الأوصاف","حبك نار","ضحكة المساجين","يا خلي القلب","لحن الوفاء","مداح القمر","قولي حاجة","بتلوموني ليه","أول مرة",
+    "في يوم في شهر في سنة","سيرة الحب","الهوى هوايا","ماليش غيرك"],
+  "وردة": ["أوقاتي بتحلو","بتونس بيك","حرمت أحبك","لولا الملامة","في يوم وليلة","العيون السود","وحشتوني","اسمعوني","ميعاد"],
+  "فضل شاكر": ph("أغنية"),
+  "مجوز": ph("لحن"),
+  "أصالة نصري": ph("أغنية"),
+};
+const singerNames = Object.keys(singers);
+function songsOf(name) { return singers[name].map(t => [name, t]); }
+const series = ["أحداث النهاية|د. طارق سويدان","تفسير القرآن|الشيخ الشعراوي","دروس|الشيخ بدر المشاري"];
+const TYPES = {
+  quran:   {label:"القرآن",  icon:"📖", color:"--c-quran"},
+  lessons: {label:"الدروس",  icon:"🎙️", color:"--c-lessons"},
+  youtube: {label:"يوتيوب",  icon:"▶",  color:"--c-youtube"},
+  songs:   {label:"الأغاني",  icon:"🎵", color:"--c-songs"},
+  map:     {label:"الخريطة", icon:"🗺️", color:"--c-map"},
+};
+const state = { split:true, panels:["quran","map"], active:0, playing:false, current:null, list:[], idx:0, reciter:0, q:"" };
+let timer;
+const $ = id => document.getElementById(id);
+
+function cardBg(i) { const h = (i * 37 + 250) % 360; return `linear-gradient(135deg, hsl(${h} 55% 38%), hsl(${(h+50)%360} 60% 24%))`; }
+
+function renderRail() {
+  const rail = $("rail"); rail.innerHTML = "";
+  const cur = state.panels[state.active];
+  for (const [k, t] of Object.entries(TYPES)) {
+    const b = document.createElement("button");
+    if (k === cur) b.className = "on";
+    b.innerHTML = `<span class="ico" style="background:var(${t.color})">${t.icon}</span>${t.label}`;
+    b.dataset.drag = "type"; b.dataset.val = k;
+    b.onclick = () => { if (justDragged) return; state.panels[state.active] = k; render(); };
+    rail.appendChild(b);
+  }
+}
+
+function render() {
+  const wrap = $("panels"); wrap.innerHTML = "";
+  wrap.classList.toggle("split", state.split);
+  const n = state.split ? 2 : 1;
+  if (state.active >= n) state.active = 0;
+  for (let i = 0; i < n; i++) wrap.appendChild(panel(i));
+  $("splitBtn").textContent = state.split ? "شاشة واحدة" : "تقسيم الشاشة";
+  renderRail();
+}
+
+function sec(t) { const d = document.createElement("div"); d.className = "sec"; d.textContent = t; return d; }
+function rowh(...c) { const d = document.createElement("div"); d.className = "rowh"; d.append(...c); return d; }
+function card(i, title, sub, fn, wide, key) {
+  const b = document.createElement("button");
+  b.className = "card" + (wide ? " wide" : "") + (state.current === (key ?? title) ? " playing" : "");
+  b.style.background = cardBg(i);
+  b.innerHTML = `<span class="no">${i + 1}</span><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}`;
+  b.onclick = fn; return b;
+}
+
+function panel(i) {
+  const type = state.panels[i];
+  const el = document.createElement("div");
+  el.className = "panel" + (i === state.active ? " active" : "");
+  el.onclick = () => { if (state.active !== i) { state.active = i; render(); } };
+
+  if (type === "quran") {
+    const rb = document.createElement("button"); rb.className = "reciter";
+    rb.innerHTML = `<span>🎙️ القارئ</span><b>${reciters[state.reciter]}</b><span>▾</span>`;
+    rb.onclick = e => { e.stopPropagation(); state.reciterOpen = !state.reciterOpen; render(); };
+    el.appendChild(rb);
+    if (state.reciterOpen) {
+      const m = document.createElement("div"); m.className = "reciter-menu";
+      reciters.forEach((r, k) => {
+        const o = document.createElement("button"); o.className = "opt" + (k === state.reciter ? " on" : "");
+        o.textContent = r;
+        o.onclick = e => { e.stopPropagation(); state.reciter = k; state.reciterOpen = false; render(); };
+        m.appendChild(o);
+      });
+      el.appendChild(m);
+    }
+    el.appendChild(sec("السور"));
+    const q = state.q.trim();
+    const items = surahs.map((s, k) => [s, k]).filter(([s]) => !q || s.includes(q));
+    const titles = surahs.map((s, k) => `${k + 1}. سورة ${s}`);
+    const g = document.createElement("div"); g.className = "grid4";
+    g.append(...items.map(([s, k]) => card(k, titles[k], "", () => start(titles, k))));
+    el.appendChild(g);
+    if (!items.length) el.appendChild(sec("لا نتائج"));
+  } else if (type === "lessons") {
+    state.openSeries = state.openSeries || [null, null];
+    const open = state.openSeries[i];
+    if (open == null) {
+      el.appendChild(sec("السلاسل الصوتية"));
+      el.appendChild(rowh(...series.map((s, k) => {
+        const [name, who] = s.split("|");
+        return card(k + 3, name, who, () => { state.openSeries[i] = k; render(); }, true);
+      })));
+    } else {
+      const [name, who] = series[open].split("|");
+      const back = document.createElement("button"); back.className = "reciter";
+      back.innerHTML = `<span>→ رجوع</span><b>${name} — ${who}</b>`;
+      back.onclick = e => { e.stopPropagation(); state.openSeries[i] = null; render(); };
+      el.appendChild(back);
+      const lessons = Array.from({length: 12}, (_, n) => `${name} - الحلقة ${n + 1}`);
+      const g = document.createElement("div"); g.className = "grid4";
+      g.append(...lessons.map((t, n) => card(n, `الحلقة ${n + 1}`, "", () => start(lessons, n), false, t)));
+      el.appendChild(g);
+    }
+  } else if (type === "songs") {
+    state.openSinger = state.openSinger || [null, null];
+    const open = state.openSinger[i];
+    if (open == null) {
+      el.appendChild(sec("اختر المطرب"));
+      const g = document.createElement("div"); g.className = "grid4";
+      g.append(...singerNames.map((n, k) => card(k, n, "", () => { state.openSinger[i] = n; render(); }, true)));
+      el.appendChild(g);
+    } else {
+      const back = document.createElement("button"); back.className = "reciter";
+      back.innerHTML = `<span>→ رجوع</span><b>🎵 ${open}</b>`;
+      back.onclick = e => { e.stopPropagation(); state.openSinger[i] = null; render(); };
+      el.appendChild(back);
+      const list = songsOf(open), titles = list.map(([n, t]) => `${n} - ${t}`);
+      const g = document.createElement("div"); g.className = "grid4";
+      g.append(...list.map(([n, t], k) => card(k, t, "", () => start(titles, k), false, titles[k])));
+      el.appendChild(g);
+    }
+  } else if (type === "youtube") {
+    el.innerHTML = `<div class="yt"><div class="in"><input placeholder="رابط يوتيوب أو معرّف الفيديو"><button class="pill" style="background:#fff;color:#1b1030;font-weight:700">تشغيل</button></div><div class="video">▶ مكان المشغّل الرسمي (معاينة فقط)</div></div>`;
+  } else {
+    el.innerHTML = `<div class="map"><div class="pin"></div><small>معاينة شكلية لخرائط قوقل</small></div>`;
+  }
+  el.dataset.panel = i;
+  const grip = document.createElement("div");
+  grip.className = "grip"; grip.dataset.drag = "panel"; grip.dataset.val = i;
+  grip.textContent = `⠿  ${TYPES[type].label}  — اسحب للتبديل`;
+  el.prepend(grip);
+  return el;
+}
+
+function start(list, idx) { state.list = list; state.idx = idx; play(); }
+function play() { state.current = state.list[state.idx]; state.playing = true; update(); progress(); }
+function update() {
+  $("nowTitle").textContent = state.current || "لا يوجد تشغيل";
+  $("play").textContent = state.playing ? "⏸" : "▶";
+  render();
+}
+function progress() {
+  clearInterval(timer); let p = 0;
+  timer = setInterval(() => { if (state.playing) { p = (p + 1) % 101; $("prog").style.width = p + "%"; } }, 300);
+}
+
+$("splitBtn").onclick = () => { state.split = !state.split; render(); };
+$("play").onclick = () => { if (state.current) { state.playing = !state.playing; update(); } };
+$("next").onclick = () => { if (state.list.length) { state.idx = (state.idx + 1) % state.list.length; play(); } };
+$("prev").onclick = () => { if (state.list.length) { state.idx = (state.idx - 1 + state.list.length) % state.list.length; play(); } };
+$("q").oninput = e => { state.q = e.target.value; render(); };
+
+function tick() { $("clock").textContent = new Date().toLocaleTimeString("ar-JO", {hour:"2-digit", minute:"2-digit"}); }
+tick(); setInterval(tick, 30000);
+
+// ---- السحب والإفلات (يعمل بالماوس واللمس) ----
+let drag = null, justDragged = false, ghost = null;
+
+function panelAt(x, y) {
+  for (const el of document.elementsFromPoint(x, y)) {
+    const p = el.closest && el.closest(".panel[data-panel]");
+    if (p) return p;
+  }
+  return null;
+}
+function makeGhost(d) {
+  ghost = document.createElement("div"); ghost.className = "ghost";
+  if (d.kind === "type") {
+    const t = TYPES[d.val];
+    ghost.innerHTML = `<span class="ico" style="background:var(${t.color})">${t.icon}</span>${t.label}`;
+  } else {
+    ghost.textContent = "⠿ " + TYPES[state.panels[+d.val]].label;
+  }
+  document.body.appendChild(ghost);
+  document.body.classList.add("dragging");
+}
+function endDrag() {
+  ghost?.remove(); ghost = null;
+  document.body.classList.remove("dragging");
+  document.querySelectorAll(".panel.drop").forEach(p => p.classList.remove("drop"));
+}
+document.addEventListener("pointerdown", e => {
+  const t = e.target.closest("[data-drag]");
+  if (!t) return;
+  drag = { kind: t.dataset.drag, val: t.dataset.val, sx: e.clientX, sy: e.clientY, on: false };
+});
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.on && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) { drag.on = true; makeGhost(drag); }
+  if (!drag.on) return;
+  ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
+  document.querySelectorAll(".panel.drop").forEach(p => p.classList.remove("drop"));
+  panelAt(e.clientX, e.clientY)?.classList.add("drop");
+});
+document.addEventListener("pointerup", e => {
+  if (!drag) return;
+  if (drag.on) {
+    justDragged = true; setTimeout(() => justDragged = false, 0);
+    const p = panelAt(e.clientX, e.clientY);
+    if (p) {
+      const to = +p.dataset.panel;
+      if (drag.kind === "type") { state.panels[to] = drag.val; state.active = to; }
+      else {
+        const from = +drag.val;
+        if (from !== to) { [state.panels[from], state.panels[to]] = [state.panels[to], state.panels[from]]; state.active = to; }
+      }
+    }
+    endDrag(); render();
+  }
+  drag = null;
+});
+document.addEventListener("pointercancel", () => { endDrag(); drag = null; });
+
+// ---- لوحة التعديل ----
+const root = document.documentElement.style;
+document.querySelectorAll("input[type=color]").forEach(i => i.oninput = () => root.setProperty(i.dataset.var, i.value));
+$("fs").oninput = e => root.setProperty("--fs", e.target.value);
+$("rad").oninput = e => root.setProperty("--radius", e.target.value + "em");
+$("reset").onclick = () => location.reload();
+$("copy").onclick = () => {
+  const cs = getComputedStyle(document.documentElement);
+  const t = ["--g1","--g2","--g3","--c-quran","--c-lessons","--c-youtube","--c-map","--c-songs","--fs","--radius"]
+    .map(v => `${v}: ${cs.getPropertyValue(v).trim()}`).join("\n");
+  navigator.clipboard?.writeText(t); alert(t);
+};
+render();
+</script>
+</body>
+</html>
